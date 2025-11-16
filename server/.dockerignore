@@ -1,0 +1,7 @@
+.git
+.gitignore
+*.md
+README.md
+.github
+*.log
+tmp/

@@ -1,0 +1,14 @@
+{
+  "name": "BT播放器",
+  "description": "流式播放BT视频(需要搭配服务端使用)",
+  "version": "1.0",
+  "permissions": ["contextMenus", "tabs", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "app.html",
+    "default_icon": "app.png"
+  }
+}
