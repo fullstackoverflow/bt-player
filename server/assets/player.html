@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torrent Player (React)</title>
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #a0a0b0;
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto;
+        }
+        
+        .loading p {
+            font-size: 1.1em;
+            color: #a0a0b0;
+            margin-top: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 16px rgba(245, 87, 108, 0.3);
+            font-size: 1.05em;
+        }
+        
+        .file-list {
+            margin-bottom: 30px;
+        }
+        
+        .file-item {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 18px 24px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border: 2px solid transparent;
+        }
+        
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .file-item.selected {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            border: 2px solid #667eea;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .file-name {
+            flex: 1;
+            font-size: 1.05em;
+            color: #e0e0e0;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .file-index {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .video-container {
+            margin-top: 20px;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .video-js {
+            width: 100%;
+            max-height: calc(100vh - 150px);
+            aspect-ratio: 16/9;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* 优化字幕样式 - 移除黑色背景 */
+        .video-js .vjs-text-track-display {
+            pointer-events: none;
+        }
+        
+        .video-js .vjs-text-track-cue {
+            background-color: transparent !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9),
+                         -1px -1px 2px rgba(0, 0, 0, 0.9),
+                         1px -1px 2px rgba(0, 0, 0, 0.9),
+                         -1px 1px 2px rgba(0, 0, 0, 0.9) !important;
+        }
+        
+        .video-js .vjs-text-track-cue > div {
+            background-color: transparent !important;
+            padding: 0 !important;
+        }
+        
+        /* 隐藏 Video.js 默认的字幕相关按钮 */
+        .vjs-subs-caps-button,
+        .vjs-subtitles-button,
+        .vjs-captions-button {
+            display: none !important;
+        }
+        
+        /* Video.js 自定义字幕上传按钮 */
+        .vjs-subtitle-upload-button {
+            cursor: pointer;
+        }
+        
+        .vjs-subtitle-upload-button .vjs-icon-placeholder:before {
+            content: '📄';
+            font-size: 1.8em;
+            line-height: 1.67;
+        }
+        
+        .vjs-subtitle-upload-button:hover {
+            color: #667eea;
+        }
+        
+        /* 返回按钮 */
+        .back-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            white-space: nowrap;
+            margin-bottom: 20px;
+        }
+        
+        .back-button .back-icon {
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+        }
+        
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .back-button:hover .back-icon {
+            transform: translateX(-3px);
+        }
+        
+        /* 播放器控制栏 */
+        .player-controls {
+            margin-top: 15px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+        
+        /* 字幕信息显示 */
+        .subtitle-info {
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+        
+        .subtitle-info .check-icon {
+            font-size: 1.1em;
+            color: #4ade80;
+        }
+        
+        .subtitle-name {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .controls {
+            margin-top: 25px;
+            text-align: center;
+        }
+
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 600;
+            margin: 0 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            background: linear-gradient(135deg, #4a4a5a 0%, #5a5a6a 100%);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .video-js {
+                height: 400px;
+            }
+            
+            .player-controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .back-button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .subtitle-upload {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            
+            .subtitle-label {
+                justify-content: center;
+            }
+            
+            .file-item {
+                padding: 15px 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // ==================== 组件：加载动画 ====================
+        function LoadingSpinner() {
+            return (
+                <div className="loading">
+                    <div className="spinner"></div>
+                    <p>正在加载 Torrent 信息...</p>
+                </div>
+            );
+        }
+
+        // ==================== 组件：错误提示 ====================
+        function ErrorMessage({ message }) {
+            return (
+                <div className="error">{message}</div>
+            );
+        }
+
+        // ==================== 组件：文件列表项 ====================
+        function FileItem({ file, isSelected, onClick }) {
+            return (
+                <div 
+                    className={`file-item ${isSelected ? 'selected' : ''}`}
+                    onClick={onClick}
+                >
+                    <span className="file-index">#{file.index}</span>
+                    <span className="file-name">{file.name}</span>
+                </div>
+            );
+        }
+
+        // ==================== 组件：文件列表 ====================
+        function FileList({ files, selectedIndex, onSelectFile, onPlay }) {
+            return (
+                <div className="file-list">
+                    <h2>选择要播放的文件：</h2>
+                    {files.map((file, index) => (
+                        <FileItem
+                            key={index}
+                            file={file}
+                            isSelected={index === selectedIndex}
+                            onClick={() => {
+                                onSelectFile(index);
+                                onPlay(index);
+                            }}
+                        />
+                    ))}
+                </div>
+            );
+        }
+
+        // ==================== 组件：视频播放器 ====================
+        function VideoPlayer({ sessionId, fileIndex, onBack }) {
+            const videoRef = useRef(null);
+            const playerRef = useRef(null);
+            const [subtitleFile, setSubtitleFile] = useState(null);
+            const [subtitleUrl, setSubtitleUrl] = useState(null);
+
+            useEffect(() => {
+                if (videoRef.current && !playerRef.current) {
+                    // 初始化 video.js 播放器
+                    playerRef.current = videojs(videoRef.current, {
+                        controls: true,
+                        autoplay: true,
+                        preload: 'auto',
+                        fluid: true,
+                        controlBar: {
+                            subtitlesButton: false,  // 禁用字幕设置按钮
+                            captionsButton: false,   // 禁用字幕按钮
+                        }
+                    });
+
+                    // 创建字幕上传按钮
+                    const Button = videojs.getComponent('Button');
+                    
+                    class SubtitleButton extends Button {
+                        constructor(player, options) {
+                            super(player, options);
+                            this.controlText('上传字幕');
+                        }
+                        
+                        buildCSSClass() {
+                            return 'vjs-subtitle-upload-button vjs-control vjs-button';
+                        }
+                        
+                        handleClick() {
+                            // 触发文件选择
+                            const fileInput = document.getElementById('subtitle-input-hidden');
+                            if (fileInput) {
+                                fileInput.click();
+                            }
+                        }
+                    }
+
+                    // 注册组件
+                    videojs.registerComponent('SubtitleButton', SubtitleButton);
+                    
+                    // 添加按钮到控制栏
+                    playerRef.current.getChild('controlBar').addChild('SubtitleButton', {}, 
+                        playerRef.current.getChild('controlBar').children().length - 1
+                    );
+                }
+
+                // 更新视频源
+                if (playerRef.current && sessionId && fileIndex !== null) {
+                    const videoUrl = `/torrent/play/${sessionId}/${fileIndex}`;
+                    playerRef.current.src({
+                        src: videoUrl,
+                        type: 'video/mp4'
+                    });
+                }
+
+                // 清理函数
+                return () => {
+                    if (playerRef.current) {
+                        playerRef.current.dispose();
+                        playerRef.current = null;
+                    }
+                    // 清理字幕 URL
+                    if (subtitleUrl) {
+                        URL.revokeObjectURL(subtitleUrl);
+                    }
+                };
+            }, [sessionId, fileIndex]);
+
+            // SRT 转 VTT
+            const convertSrtToVtt = (srtText) => {
+                let vtt = 'WEBVTT\n\n';
+                // 替换时间格式：逗号改为点号
+                vtt += srtText.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+                // 移除序号行（SRT 中每个字幕块前的数字）
+                vtt = vtt.replace(/^\d+\s*\n/gm, '');
+                return vtt;
+            };
+
+            // ASS 转 VTT (简化版本，提取对话内容)
+            const convertAssToVtt = (assText) => {
+                let vtt = 'WEBVTT\n\n';
+                const lines = assText.split('\n');
+                
+                for (let line of lines) {
+                    if (line.startsWith('Dialogue:')) {
+                        // ASS 格式: Dialogue: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+                        const parts = line.split(',');
+                        if (parts.length >= 10) {
+                            const start = parts[1].trim();
+                            const end = parts[2].trim();
+                            const text = parts.slice(9).join(',').trim();
+                            
+                            // 转换时间格式 0:00:00.00 -> 00:00:00.000
+                            const formatTime = (time) => {
+                                const match = time.match(/(\d+):(\d{2}):(\d{2})\.(\d{2})/);
+                                if (match) {
+                                    const [, h, m, s, ms] = match;
+                                    return `${h.padStart(2, '0')}:${m}:${s}.${ms}0`;
+                                }
+                                return time;
+                            };
+                            
+                            vtt += `${formatTime(start)} --> ${formatTime(end)}\n`;
+                            // 移除 ASS 格式标签 (如 {\i1}, {\b1} 等)
+                            const cleanText = text.replace(/\{[^}]*\}/g, '');
+                            vtt += `${cleanText}\n\n`;
+                        }
+                    }
+                }
+                return vtt;
+            };
+
+            // 处理字幕文件上传
+            const handleSubtitleUpload = async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // 检查文件类型
+                const validTypes = ['.srt', '.vtt', '.ass'];
+                const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                
+                if (!validTypes.includes(fileExt)) {
+                    alert('请上传有效的字幕文件 (.srt, .vtt, .ass)');
+                    return;
+                }
+
+                setSubtitleFile(file);
+
+                // 读取文件内容
+                const text = await file.text();
+                let vttContent = text;
+                
+                // 根据文件类型转换为 VTT
+                if (fileExt === '.srt') {
+                    console.log('转换 SRT -> VTT');
+                    vttContent = convertSrtToVtt(text);
+                } else if (fileExt === '.ass') {
+                    console.log('转换 ASS -> VTT');
+                    vttContent = convertAssToVtt(text);
+                }
+                
+                // 创建 VTT Blob
+                const vttBlob = new Blob([vttContent], { type: 'text/vtt' });
+                const url = URL.createObjectURL(vttBlob);
+                setSubtitleUrl(url);
+
+                // 添加字幕轨道到播放器
+                if (playerRef.current) {
+                    // 移除现有字幕
+                    const tracks = playerRef.current.remoteTextTracks();
+                    for (let i = tracks.length - 1; i >= 0; i--) {
+                        playerRef.current.removeRemoteTextTrack(tracks[i]);
+                    }
+
+                    // 添加新字幕
+                    playerRef.current.addRemoteTextTrack({
+                        kind: 'subtitles',
+                        src: url,
+                        srclang: 'zh',
+                        label: file.name,
+                        mode: 'showing' // 自动显示字幕
+                    }, false);
+
+                    console.log('字幕已加载:', file.name);
+                }
+            };
+
+            const handleBack = () => {
+                if (playerRef.current) {
+                    playerRef.current.pause();
+                }
+                onBack();
+            };
+
+            return (
+                <div className="video-container">
+                    <button className="back-button" onClick={handleBack}>
+                        <span className="back-icon">←</span>
+                        返回列表
+                    </button>
+                    <input
+                        id="subtitle-input-hidden"
+                        type="file"
+                        accept=".srt,.vtt,.ass"
+                        onChange={handleSubtitleUpload}
+                        style={{ display: 'none' }}
+                    />
+                    <video
+                        ref={videoRef}
+                        className="video-js vjs-default-skin"
+                        controls
+                        preload="auto"
+                    >
+                        <p className="vjs-no-js">
+                            To view this video please enable JavaScript
+                        </p>
+                    </video>
+                    {subtitleFile && (
+                        <div className="player-controls">
+                            <div className="subtitle-info">
+                                <span className="check-icon">✓</span>
+                                <span className="subtitle-name">{subtitleFile.name}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==================== 主应用组件 ====================
+        function App() {
+            const [state, setState] = useState({
+                loading: true,
+                error: null,
+                sessionId: '',
+                files: [],
+                selectedIndex: 0,
+                showVideo: false,
+            });
+
+            useEffect(() => {
+                initApp();
+            }, []);
+
+            // 解析 URL 参数
+            const getUrlParameter = (name) => {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
+            };
+
+            // 请求添加 torrent
+            const addTorrent = async (link) => {
+                const response = await fetch(`/torrent/add?link=${encodeURIComponent(link)}`);
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '添加 torrent 失败');
+                }
+                return await response.json();
+            };
+
+            // 初始化应用
+            const initApp = async () => {
+                const link = getUrlParameter('link');
+                
+                if (!link) {
+                    setState(prev => ({
+                        ...prev,
+                        loading: false,
+                        error: '错误：未提供 torrent 链接参数 (link)'
+                    }));
+                    return;
+                }
+
+                try {
+                    const data = await addTorrent(link);
+                    console.log('接收到数据:', data);
+
+                    if (!data.files || data.files.length === 0) {
+                        setState(prev => ({
+                            ...prev,
+                            loading: false,
+                            error: '错误：该 torrent 没有文件'
+                        }));
+                        return;
+                    }
+
+                    setState(prev => ({
+                        ...prev,
+                        loading: false,
+                        sessionId: data.torrent_session_id,
+                        files: data.files,
+                        selectedIndex: 0,
+                        showVideo: data.files.length === 1, // 单文件直接播放
+                    }));
+
+                } catch (error) {
+                    setState(prev => ({
+                        ...prev,
+                        loading: false,
+                        error: '错误：' + error.message
+                    }));
+                    console.error('初始化失败:', error);
+                }
+            };
+
+            // 选择文件
+            const handleSelectFile = (index) => {
+                setState(prev => ({ ...prev, selectedIndex: index }));
+            };
+
+            // 播放视频
+            const handlePlay = (index) => {
+                setState(prev => ({
+                    ...prev,
+                    selectedIndex: index,
+                    showVideo: true
+                }));
+            };
+
+            // 返回文件列表
+            const handleBack = () => {
+                setState(prev => ({ ...prev, showVideo: false }));
+            };
+
+            return (
+                <div className="container">
+                    {state.error && <ErrorMessage message={state.error} />}
+                    
+                    {state.loading && <LoadingSpinner />}
+                    
+                    {!state.loading && !state.error && !state.showVideo && (
+                        <FileList
+                            files={state.files}
+                            selectedIndex={state.selectedIndex}
+                            onSelectFile={handleSelectFile}
+                            onPlay={handlePlay}
+                        />
+                    )}
+                    
+                    {!state.loading && !state.error && state.showVideo && (
+                        <VideoPlayer
+                            sessionId={state.sessionId}
+                            fileIndex={state.files[state.selectedIndex].index}
+                            onBack={handleBack}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        // ==================== 渲染应用 ====================
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
