@@ -13,8 +13,10 @@ RUN go mod download
 # 复制源代码
 COPY . .
 
-# 构建应用(移除 -a 加速构建)
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bt-player .
+# 构建应用(使用构建缓存加速)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bt-player .
 
 # 运行阶段
 FROM alpine:latest
