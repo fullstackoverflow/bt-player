@@ -2,11 +2,10 @@
 
 BT 流式播放器 - 支持边下边播
 
-## 📺 演示视频
+## 📺 演示
 
-
-https://github.com/user-attachments/assets/f9797ddd-306f-44a3-9eee-e99a95bcf35d
-
+<video src="https://github.com/user-attachments/assets/f9797ddd-306f-44a3-9eee-e99a95bcf35d" autoplay loop controls muted title="demo">
+</video>
 
 ## 功能特性
 
