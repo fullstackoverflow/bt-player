@@ -229,6 +229,87 @@
             transform: translateX(-3px);
         }
         
+        /* 复制地址按钮 */
+        .copy-url-button {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+            white-space: nowrap;
+            margin-bottom: 20px;
+            margin-left: 10px;
+        }
+        
+        .copy-url-button .copy-icon {
+            font-size: 1.2em;
+        }
+        
+        .copy-url-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+        }
+        
+        .copy-url-button:active {
+            transform: scale(0.95);
+        }
+        
+        /* 复制成功提示 */
+        .copy-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(74, 222, 128, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s;
+            z-index: 10000;
+        }
+        
+        .copy-toast .check-icon {
+            font-size: 1.3em;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+        }
+        
+        /* 按钮组容器 */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
         /* 播放器控制栏 */
         .player-controls {
             margin-top: 15px;
@@ -434,6 +515,9 @@
             const playerRef = useRef(null);
             const [subtitleFile, setSubtitleFile] = useState(null);
             const [subtitleUrl, setSubtitleUrl] = useState(null);
+            
+            // 生成视频 URL
+            const videoUrl = `/torrent/play/${sessionId}/${fileIndex}`;
 
             useEffect(() => {
                 if (videoRef.current && !playerRef.current) {
@@ -482,7 +566,6 @@
 
                 // 更新视频源
                 if (playerRef.current && sessionId && fileIndex !== null) {
-                    const videoUrl = `/torrent/play/${sessionId}/${fileIndex}`;
                     playerRef.current.src({
                         src: videoUrl,
                         type: 'video/mp4'
@@ -608,12 +691,35 @@
                 onBack();
             };
 
+            const handleCopyUrl = async () => {
+                const fullUrl = window.location.origin + videoUrl;
+                try {
+                    await navigator.clipboard.writeText(fullUrl);
+                    // 显示复制成功提示
+                    const toast = document.createElement('div');
+                    toast.className = 'copy-toast';
+                    toast.innerHTML = '<span class="check-icon">✓</span><span>播放地址已复制！可在本地播放器打开</span>';
+                    document.body.appendChild(toast);
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 3000);
+                } catch (err) {
+                    alert('复制失败，请手动复制:\n' + fullUrl);
+                }
+            };
+
             return (
                 <div className="video-container">
-                    <button className="back-button" onClick={handleBack}>
-                        <span className="back-icon">←</span>
-                        返回列表
-                    </button>
+                    <div className="button-group">
+                        <button className="back-button" onClick={handleBack}>
+                            <span className="back-icon">←</span>
+                            返回列表
+                        </button>
+                        <button className="copy-url-button" onClick={handleCopyUrl}>
+                            <span className="copy-icon">📋</span>
+                            复制播放地址
+                        </button>
+                    </div>
                     <input
                         id="subtitle-input-hidden"
                         type="file"
