@@ -89,18 +89,27 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "No magnet link provided"})
 			return
 		}
-		log.Printf("MagnetLink: %s", link)
+		log.Printf("link: %s", link)
 		client := torrent.GetGlobalTorrentClient()
-		torrent_content, err := torrent.DownloadTorrent(link)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to download torrent"})
-			return
+		
+		var magnet_link string
+		var err error
+
+		if strings.HasPrefix(link, "magnet:?") {
+			magnet_link = link
+		} else {
+			torrent_content, err := torrent.DownloadTorrent(link)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to download torrent"})
+				return
+			}
+			magnet_link, err = torrent.TransTorrentFileToMagnetLink(torrent_content)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to convert torrent to magnet link"})
+				return
+			}
 		}
-		magnet_link, err := torrent.TransTorrentFileToMagnetLink(torrent_content)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to convert torrent to magnet link"})
-			return
-		}
+
 		log.Printf("Magnet Link: %s", magnet_link)
 		t, err := client.AddMagnet(magnet_link)
 		if err != nil {

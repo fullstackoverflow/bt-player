@@ -310,6 +310,103 @@
             flex-wrap: wrap;
         }
         
+        /* 本地播放器按钮 */
+        .local-player-button {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+            white-space: nowrap;
+            margin-left: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .local-player-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+        }
+
+        .player-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .player-modal {
+            background: rgba(30, 30, 46, 0.95);
+            border-radius: 20px;
+            padding: 28px;
+            width: min(420px, 90%);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .player-modal h3 {
+            margin-bottom: 16px;
+            font-size: 1.3em;
+            color: #f8fafc;
+        }
+
+        .player-options {
+            display: grid;
+            gap: 12px;
+        }
+
+        .player-option {
+            border-radius: 14px;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.25s ease;
+        }
+
+        .player-option:hover {
+            border-color: rgba(249, 115, 22, 0.6);
+            background: rgba(249, 115, 22, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .player-option .player-name {
+            font-weight: 600;
+            color: #f97316;
+        }
+
+        .player-option .player-desc {
+            font-size: 0.85em;
+            color: rgba(255, 255, 255, 0.65);
+        }
+
+        .player-modal-actions {
+            margin-top: 18px;
+            text-align: right;
+        }
+
+        .modal-cancel-button {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+        
         /* 播放器控制栏 */
         .player-controls {
             margin-top: 15px;
@@ -458,6 +555,14 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
+        
+        const LOCAL_PLAYERS = {
+            potplayer: {
+                label: 'PotPlayer',
+                scheme: 'potplayer://',
+                description: '已注册 potplayer:// 协议的用户可直接调用'
+            },
+        };
 
         // ==================== 组件：加载动画 ====================
         function LoadingSpinner() {
@@ -515,6 +620,8 @@
             const playerRef = useRef(null);
             const [subtitleFile, setSubtitleFile] = useState(null);
             const [subtitleUrl, setSubtitleUrl] = useState(null);
+            const [selectedPlayer, setSelectedPlayer] = useState('potplayer');
+            const [showPlayerModal, setShowPlayerModal] = useState(false);
             
             // 生成视频 URL
             const videoUrl = `/torrent/play/${sessionId}/${fileIndex}`;
@@ -524,7 +631,7 @@
                     // 初始化 video.js 播放器
                     playerRef.current = videojs(videoRef.current, {
                         controls: true,
-                        autoplay: true,
+                        autoplay: false,
                         preload: 'auto',
                         fluid: true,
                         controlBar: {
@@ -707,6 +814,38 @@
                     alert('复制失败，请手动复制:\n' + fullUrl);
                 }
             };
+            
+            const launchLocalPlayer = (playerKey) => {
+                const playerConfig = LOCAL_PLAYERS[playerKey];
+                if (!playerConfig) return;
+
+                const httpUrl = window.location.origin + videoUrl;
+                const encodedUrl = encodeURI(httpUrl);
+                const launchUrl = `${playerConfig.scheme}${encodedUrl}`;
+
+                const anchor = document.createElement('a');
+                anchor.href = launchUrl;
+                anchor.style.display = 'none';
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
+
+                setSelectedPlayer(playerKey);
+                setTimeout(() => {
+                    console.log(`已尝试使用 ${playerConfig.label} 打开: ${launchUrl}`);
+                }, 0);
+            };
+
+            const handleLocalPlayerClick = () => {
+                setShowPlayerModal(true);
+            };
+
+            const handlePlayerSelection = (playerKey) => {
+                setShowPlayerModal(false);
+                launchLocalPlayer(playerKey);
+            };
+
+            const handleCloseModal = () => setShowPlayerModal(false);
 
             return (
                 <div className="video-container">
@@ -718,6 +857,9 @@
                         <button className="copy-url-button" onClick={handleCopyUrl}>
                             <span className="copy-icon">📋</span>
                             复制播放地址
+                        </button>
+                        <button className="local-player-button" onClick={handleLocalPlayerClick}>
+                            ▶ 本地播放器播放
                         </button>
                     </div>
                     <input
@@ -742,6 +884,33 @@
                             <div className="subtitle-info">
                                 <span className="check-icon">✓</span>
                                 <span className="subtitle-name">{subtitleFile.name}</span>
+                            </div>
+                        </div>
+                    )}
+                    {showPlayerModal && (
+                        <div className="player-modal-overlay" onClick={handleCloseModal}>
+                            <div className="player-modal" onClick={(e) => e.stopPropagation()}>
+                                <h3>选择要启动的本地播放器</h3>
+                                <div className="player-options">
+                                    {Object.entries(LOCAL_PLAYERS).map(([key, config]) => (
+                                        <div
+                                            key={key}
+                                            className="player-option"
+                                            onClick={() => handlePlayerSelection(key)}
+                                        >
+                                            <div>
+                                                <div className="player-name">{config.label}</div>
+                                                <div className="player-desc">{config.description}</div>
+                                            </div>
+                                            {selectedPlayer === key && (
+                                                <span className="player-desc">上次使用</span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="player-modal-actions">
+                                    <button className="modal-cancel-button" onClick={handleCloseModal}>取消</button>
+                                </div>
                             </div>
                         </div>
                     )}
