@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"io/fs"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -41,9 +40,25 @@ func main() {
 
 	r := gin.Default()
 	
-	// 使用嵌入的文件系统
-	assetsSubFS, _ := fs.Sub(assetsFS, "assets")
-	r.StaticFS("/assets", http.FS(assetsSubFS))
+	// 根路径返回播放器页面
+	r.GET("/", func(c *gin.Context) {
+		data, err := assetsFS.ReadFile("assets/player.html")
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to load player")
+			return
+		}
+		c.Data(http.StatusOK, "text/html; charset=utf-8", data)
+	})
+
+	// Favicon 路由
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		data, err := assetsFS.ReadFile("assets/favicon.png")
+		if err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.Data(http.StatusOK, "image/png", data)
+	})
 
 	r.GET("/torrent/play/:session/:stream", func(c *gin.Context) {
 		session := c.Param("session")

@@ -16,7 +16,7 @@ chrome.contextMenus.onClicked.addListener((item, tab) => {
             if (result.serverUrl) {
                 console.log('准备打开的URL:', item.linkUrl);
                 chrome.tabs.create({
-                    url: result.serverUrl + `/assets/player.html?link=${encodeURIComponent(item.linkUrl)}`,
+                    url: result.serverUrl + `?link=${encodeURIComponent(item.linkUrl)}`,
                     active: true // true: 立即切换到新标签页, false: 后台打开
                 });
             }

@@ -10,5 +10,8 @@
   "action": {
     "default_popup": "app.html",
     "default_icon": "app.png"
+  },
+  "icons": {
+    "128": "app.png"
   }
 }
