@@ -693,6 +693,35 @@
                 };
             }, [sessionId, fileIndex]);
 
+            // 添加键盘快捷键支持
+            useEffect(() => {
+                const handleKeyPress = (event) => {
+                    // 如果焦点在输入框中，不触发快捷键
+                    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                        return;
+                    }
+
+                    // 空格键：暂停/播放（全屏和非全屏都支持）
+                    if (event.code === 'Space' && playerRef.current) {
+                        event.preventDefault();
+                        event.stopPropagation(); // 阻止事件冒泡，防止触发 Video.js 默认行为
+                        
+                        if (playerRef.current.paused()) {
+                            playerRef.current.play();
+                        } else {
+                            playerRef.current.pause();
+                        }
+                    }
+                };
+
+                // 使用捕获阶段监听，优先级更高
+                document.addEventListener('keydown', handleKeyPress, true);
+
+                return () => {
+                    document.removeEventListener('keydown', handleKeyPress, true);
+                };
+            }, []);
+
             // SRT 转 VTT
             const convertSrtToVtt = (srtText) => {
                 let vtt = 'WEBVTT\n\n';
