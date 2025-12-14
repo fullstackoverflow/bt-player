@@ -37,8 +37,24 @@ func getContentType(extension string) string {
 
 func main() {
 	torrent.InitTorrentClient()
+	torrent.InitConfig() // 初始化配置
 
 	r := gin.Default()
+	
+	// 添加 CORS 中间件，允许 Chrome 扩展访问
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		
+		// 处理预检请求
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+		
+		c.Next()
+	})
 	
 	// 根路径返回播放器页面
 	r.GET("/", func(c *gin.Context) {
@@ -167,6 +183,56 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{
 			"torrent_session_id": torrent_session_id,
 			"files":              files,
+		})
+	})
+
+	// 获取配置接口
+	r.GET("/config", func(c *gin.Context) {
+		config := torrent.GetConfig()
+
+		c.JSON(http.StatusOK, gin.H{
+			"enable_seeding": config.GetSeeding(),
+			"storage_limit":  config.GetStorageLimit(), // GB，0表示不限制
+			"data_path":      config.GetDataPath(),
+		})
+	})
+
+	// 设置配置接口
+	r.POST("/config", func(c *gin.Context) {
+		var req struct {
+			EnableSeeding *bool   `json:"enable_seeding"`
+			StorageLimit  *int64  `json:"storage_limit"` // GB，0表示不限制
+			DataPath      *string `json:"data_path"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		config := torrent.GetConfig()
+
+		if req.EnableSeeding != nil {
+			config.SetSeeding(*req.EnableSeeding)
+		}
+
+		if req.StorageLimit != nil {
+			if *req.StorageLimit < 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Storage limit cannot be negative"})
+				return
+			}
+			config.SetStorageLimit(*req.StorageLimit)
+		}
+
+		if req.DataPath != nil {
+			config.SetDataPath(*req.DataPath)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"enable_seeding": config.GetSeeding(),
+			"storage_limit":  config.GetStorageLimit(),
+			"data_path":      config.GetDataPath(),
+			"message":        "配置已更新",
 		})
 	})
 

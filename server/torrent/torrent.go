@@ -51,6 +51,12 @@ func initTorrentCache() {
 // AddTorrentToCache 添加 torrent 到缓存 (在 /add 接口中调用)
 func AddTorrentToCache(hash string, t *torrent.Torrent) {
 	initTorrentCache()
+	config := GetConfig()
+	if config.GetSeeding() {
+		t.AllowDataUpload()
+	} else {
+		t.DisallowDataUpload()
+	}
 	torrentCache.Add(hash, t)
 	log.Printf("添加到缓存: %s (当前缓存数: %d)", hash[:8], torrentCache.Len())
 }
@@ -131,20 +137,21 @@ func DownloadTorrent(magnetLink string) ([]byte, error) {
 func InitTorrentClient() error {
 	initOnce.Do(func() {
 		config := torrent.NewDefaultClientConfig()
-		config.DefaultStorage = storage.NewFile("./torrent-data")
+		dataPath := GetConfig().GetDataPath()
+		config.DefaultStorage = storage.NewFile(dataPath)
 		port := 10000 + rand.Intn(50000)
 		config.ListenPort = port
-		
+
 		// 设置日志级别 - 只显示警告和错误
 		// 方式1: 使用 Debug = false (默认就是 false)
 		// config.Debug = false
-		
+
 		// 方式2: 设置自定义 Logger，过滤掉 Debug 和 Info 级别
 		config.Logger = anacrolixLog.Default.WithFilterLevel(anacrolixLog.Error)
-		
+
 		// 方式3: 完全禁用日志
 		// config.Logger = anacrolixLog.Discard
-		
+
 		globalClient, initErr = torrent.NewClient(config)
 	})
 	return initErr
@@ -153,5 +160,3 @@ func InitTorrentClient() error {
 func GetGlobalTorrentClient() *torrent.Client {
 	return globalClient
 }
-
-

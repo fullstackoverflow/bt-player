@@ -24,7 +24,8 @@
             color: #555;
             font-weight: bold;
         }
-        input[type="text"] {
+        input[type="text"],
+        input[type="number"] {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -32,9 +33,13 @@
             box-sizing: border-box;
             font-size: 13px;
         }
-        input[type="text"]:focus {
+        input[type="text"]:focus,
+        input[type="number"]:focus {
             outline: none;
             border-color: #4CAF50;
+        }
+        input[type="checkbox"] {
+            cursor: pointer;
         }
         button {
             width: 100%;
@@ -75,15 +80,41 @@
 <body>
     <h3>BT播放器设置</h3>
     
-    <div class="setting-group">
-        <label for="serverUrl">服务端地址：</label>
-        <input type="text" id="serverUrl" placeholder="http://localhost:3000">
-        <div class="hint">输入完整地址，如：http://localhost:3000</div>
+    <div id="step1">
+        <div class="setting-group">
+            <label for="serverUrl">服务端地址：</label>
+            <input type="text" id="serverUrl" placeholder="http://localhost:3000">
+            <div class="hint">输入完整地址，如：http://localhost:3000</div>
+        </div>
+        
+        <button id="connect">连接服务器</button>
+        
+        <div id="status" class="status"></div>
     </div>
     
-    <button id="save">保存设置</button>
-    
-    <div id="status" class="status"></div>
+    <div id="step2" style="display: none;">
+        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+            <button id="back" style="width: auto; padding: 5px 10px; margin-right: 10px; background-color: #666;">← 返回</button>
+        </div>
+        
+        <div class="setting-group">
+            <label>
+                <input type="checkbox" id="enableSeeding" style="width: auto; margin-right: 5px;">
+                启用做种
+            </label>
+            <div class="hint">关闭后将不会上传数据给其他节点</div>
+        </div>
+        
+        <div class="setting-group">
+            <label for="storageLimit">存储上限（GB）：</label>
+            <input type="number" id="storageLimit" placeholder="0" min="0" style="width: 100%;">
+            <div class="hint">0 表示不限制，超过限制会自动清理旧文件</div>
+        </div>
+        
+        <button id="saveConfig">保存配置</button>
+        
+        <div id="configStatus" class="status"></div>
+    </div>
     
     <script src="app.js"></script>
 </body>

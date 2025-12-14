@@ -13,6 +13,8 @@ RUN go mod download
 # 复制源代码
 COPY . .
 
+ENV GIN_MODE=release
+
 # 构建应用(使用构建缓存加速)
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
